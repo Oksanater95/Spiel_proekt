@@ -1,225 +1,247 @@
-import tkinter as tk
-from tkinter import PhotoImage
-from PIL import Image, ImageTk
-
-# =========================
-# Fenster
-# =========================
-root = tk.Tk()
-root.title("JORMOS DAME")
-root.geometry("1300x950")
-root.configure(bg="#040014")
-root.resizable(False, False)
-
-# =========================
-# Farben
-# =========================
-bg = "#040014"
-panel = "#07001d"
-blue = "#66F2FF"
-pink = "#ff00ff"
-white = "#ffffff"
-purple = "#21003f"
-dark1 = "#090018"
-dark2 = "#1a0835"
-
-# =========================
-# Logo laden OHNE Pixel Effekt
-# =========================
-img = Image.open("JORMOS.png")
-img = img.resize((220, 220), Image.LANCZOS)
-logo_img = ImageTk.PhotoImage(img)
-
-# =========================
-# Layout
-# =========================
-left = tk.Frame(root, bg=panel, width=280, height=950)
-left.pack(side="left", fill="y")
-left.pack_propagate(False)
-
-right = tk.Frame(root, bg=panel, width=220, height=950)
-right.pack(side="right", fill="y")
-right.pack_propagate(False)
-
-center = tk.Frame(root, bg=bg)
-center.pack(fill="both", expand=True)
-
-# =========================
-# LINKS
-# =========================
-tk.Label(left, image=logo_img, bg=panel).pack(pady=25)
-
-tk.Label(
-    left,
-    text="THINK SMART. PLAY JORMOS.",
-    fg=pink,
-    bg=panel,
-    font=("Consolas", 11, "bold")
-).pack(pady=(0, 25))
-
-def left_button(text):
-    tk.Button(
-        left,
-        text=text,
-        fg=blue,
-        bg=purple,
-        activebackground=pink,
-        activeforeground=white,
-        font=("Consolas", 15, "bold"),
-        width=16,
-        height=2,
-        bd=2,
-        relief="groove",
-        cursor="hand2"
-    ).pack(pady=10)
-
-left_button("PLAY")
-left_button("GAMES")
-left_button("LEADERBOARD")
-left_button("SETTINGS")
-left_button("EXIT")
-
-# =========================
-# TITEL
-# =========================
-top = tk.Frame(center, bg=panel, height=110)
-top.pack(fill="x", padx=20, pady=20)
-top.pack_propagate(False)
-
-title_frame = tk.Frame(top, bg=panel)
-title_frame.pack(expand=True)
-
-tk.Label(
-    title_frame,
-    text="JORMOS ",
-    fg=blue,
-    bg=panel,
-    font=("Arial Black", 30)
-).pack(side="left")
-
-tk.Label(
-    title_frame,
-    text="DAME",
-    fg=pink,
-    bg=panel,
-    font=("Arial Black", 30)
-).pack(side="left")
-
-# =========================
-# Spielfeld
-# =========================
-canvas = tk.Canvas(
-    center,
-    width=720,
-    height=560,
-    bg=panel,
-    highlightbackground=blue,
-    highlightthickness=3
+import sys
+import sqlite3
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QLabel, QPushButton,
+    QGraphicsDropShadowEffect
 )
-canvas.pack()
+from PySide6.QtGui import (
+    QPainter, QColor, QPen, QPixmap
+)
+from PySide6.QtCore import Qt
 
-cell = 80
-ox = 120
-oy = 35
 
-# Brett
-for row in range(6):
-    for col in range(6):
-        x1 = ox + col * cell
-        y1 = oy + row * cell
-        x2 = x1 + cell
-        y2 = y1 + cell
+class MainMenu(QWidget):
+    def __init__(self):
+        super().__init__()
 
-        color = dark1 if (row + col) % 2 == 0 else dark2
+        self.setWindowTitle("JORMOS Strategic Games")
+        self.setFixedSize(1081, 1018)
 
-        canvas.create_rectangle(
-            x1, y1, x2, y2,
-            fill=color,
-            outline="#1d1d45"
+        self.pixel_font = "Press Start 2P"
+        self.title_font = "Orbitron"
+
+        self.username = self.get_username()
+
+        self.init_ui()
+
+    # =====================================
+    # USERNAME HOLEN
+    # =====================================
+    def get_username(self):
+        try:
+            conn = sqlite3.connect("users.db")
+            cur = conn.cursor()
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT
+                )
+            """)
+
+            cur.execute(
+                "SELECT username FROM users ORDER BY id DESC LIMIT 1"
+            )
+            row = cur.fetchone()
+
+            conn.close()
+
+            if row:
+                return row[0]
+            return "?"
+
+        except:
+            return "?"
+
+    # =====================================
+    # UI
+    # =====================================
+    def init_ui(self):
+
+        # USERNAME
+        self.user_box = QLabel(
+            f"USER: {self.username}", self
         )
+        self.user_box.setGeometry(850, 18, 200, 42)
+        self.user_box.setAlignment(Qt.AlignCenter)
 
-# Pink Steine
-for row in range(2):
-    for col in range(6):
-        if (row + col) % 2 == 1:
-            x = ox + col * cell + 40
-            y = oy + row * cell + 40
-            canvas.create_oval(
-                x-24, y-24, x+24, y+24,
-                fill=pink,
-                outline=white,
-                width=2
-            )
+        self.user_box.setStyleSheet(f"""
+            color:white;
+            background:#d100ff;
+            border:2px solid #ff44ff;
+            font-size:10px;
+            font-family:{self.pixel_font};
+        """)
+        self.glow(self.user_box, "#ff00ff", 220)
 
-# Blaue Steine
-for row in range(4, 6):
-    for col in range(6):
-        if (row + col) % 2 == 1:
-            x = ox + col * cell + 40
-            y = oy + row * cell + 40
-            canvas.create_oval(
-                x-24, y-24, x+24, y+24,
-                fill=blue,
-                outline=white,
-                width=2
-            )
+        # LEFT LOGO
+        self.left_logo = QLabel(self)
+        pix1 = QPixmap("HHBK_LOGO_1.png").scaled(
+            180, 180,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.left_logo.setPixmap(pix1)
+        self.left_logo.setGeometry(300, 130, 180, 180)
+        self.glow(self.left_logo, "#00ffff", 300)
 
-# Auswahlfeld
-canvas.create_rectangle(
-    ox + 3*cell,
-    oy + 3*cell,
-    ox + 4*cell,
-    oy + 4*cell,
-    outline=blue,
-    width=3
-)
+        # RIGHT LOGO
+        self.right_logo = QLabel(self)
+        pix2 = QPixmap("JORMOS.png").scaled(
+            180, 180,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.right_logo.setPixmap(pix2)
+        self.right_logo.setGeometry(610, 130, 180, 180)
+        self.glow(self.right_logo, "#ff00ff", 300)
 
-# =========================
-# Buttons unter Brett
-# =========================
-bottom = tk.Frame(center, bg=bg)
-bottom.pack(pady=18)
+        # X
+        self.cross = QLabel("×", self)
+        self.cross.setGeometry(520, 210, 50, 40)
+        self.cross.setAlignment(Qt.AlignCenter)
 
-def bottom_btn(text):
-    tk.Button(
-        bottom,
-        text=text,
-        fg=blue,
-        bg=panel,
-        activebackground=pink,
-        activeforeground=white,
-        font=("Consolas", 14, "bold"),
-        width=15,
-        height=2,
-        bd=2,
-        relief="groove"
-    ).pack(side="left", padx=10)
+        self.cross.setStyleSheet(f"""
+            color:#88aaff;
+            font-size:28px;
+            font-family:{self.pixel_font};
+            background:transparent;
+        """)
+        self.glow(self.cross, "#88aaff", 150)
 
-bottom_btn("GAMES")
-bottom_btn("SETTINGS")
-bottom_btn("LEADERBOARD")
+        # TITLE
+        self.title = QLabel("STRATEGIC GAMES", self)
+        self.title.setGeometry(220, 355, 640, 50)
+        self.title.setAlignment(Qt.AlignCenter)
 
-# =========================
-# RECHTS
-# =========================
-def side_box(text, color):
-    tk.Label(
-        right,
-        text=text,
-        fg=color,
-        bg=purple,
-        font=("Consolas", 15, "bold"),
-        width=13,
-        height=3,
-        bd=2,
-        relief="groove"
-    ).pack(pady=20)
+        self.title.setStyleSheet(f"""
+            color:#7185ff;
+            font-size:34px;
+            font-family:{self.title_font};
+            font-weight:900;
+            letter-spacing:4px;
+            background:transparent;
+        """)
+        self.glow(self.title, "#7185ff", 220)
 
-side_box("TURN\nYOUR TURN", blue)
-side_box("DIFFICULTY\nMEDIUM", pink)
-side_box("RULES", white)
-side_box("SURRENDER", white)
+        # SUBTITLE
+        self.sub = QLabel(
+            "DENKEN. SPIELEN. GEWINNEN", self
+        )
+        self.sub.setGeometry(180, 415, 720, 30)
+        self.sub.setAlignment(Qt.AlignCenter)
 
-# Start
+        self.sub.setStyleSheet(f"""
+            color:#33eaff;
+            font-size:12px;
+            font-family:{self.pixel_font};
+            background:transparent;
+        """)
+        self.glow(self.sub, "#33eaff", 160)
 
-root.mainloop()
+        # BUTTONS
+        self.make_btn("▸ START GAME ◂", 560, "#45e6ff")
+        self.make_btn("★ LEADERBOARD ★", 640, "#ff00ff")
+        self.make_btn("✕ EXIT ✕", 720, "#ff0033", True)
+
+    # =====================================
+    # BUTTON
+    # =====================================
+    def make_btn(self, text, y, color, close_btn=False):
+
+        btn = QPushButton(text, self)
+        btn.setGeometry(330, y, 420, 52)
+
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color:{color};
+                color:white;
+                border:2px solid {color};
+                font-size:13px;
+                font-family:{self.pixel_font};
+                font-weight:bold;
+            }}
+
+            QPushButton:hover {{
+                background-color:#ff00ff;
+                border:2px solid #ff66ff;
+                color:white;
+            }}
+
+            QPushButton:pressed {{
+                background-color:#ff33ff;
+                color:white;
+            }}
+        """)
+
+        self.glow(btn, color, 340)
+
+        if close_btn:
+            btn.clicked.connect(self.close)
+
+    # =====================================
+    # GLOW
+    # =====================================
+    def glow(self, widget, color, blur):
+        effect = QGraphicsDropShadowEffect(self)
+        effect.setBlurRadius(blur)
+        effect.setOffset(0, 0)
+        effect.setColor(QColor(color))
+        widget.setGraphicsEffect(effect)
+
+    # =====================================
+    # BACKGROUND
+    # =====================================
+    def paintEvent(self, event):
+
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor("#040014"))
+
+        painter.setPen(Qt.NoPen)
+
+        painter.setBrush(QColor(0, 255, 255, 35))
+        painter.drawEllipse(-250, -50, 650, 650)
+
+        painter.setBrush(QColor(255, 0, 255, 30))
+        painter.drawEllipse(700, 120, 500, 700)
+
+        painter.setBrush(QColor(0, 180, 255, 18))
+        painter.drawEllipse(360, 470, 340, 340)
+
+        pen = QPen(QColor("#0b3a55"))
+        pen.setWidth(1)
+        painter.setPen(pen)
+
+        for x in range(0, self.width(), 18):
+            painter.drawLine(x, 0, x, self.height())
+
+        for y in range(0, self.height(), 18):
+            painter.drawLine(0, y, self.width(), y)
+
+        # PIXELS
+        pink_pixels = [
+            (60, 100), (140, 220), (250, 650),
+            (940, 80), (980, 340), (820, 900)
+        ]
+
+        for px, py in pink_pixels:
+            painter.fillRect(px, py, 8, 8, QColor("#ff00ff"))
+
+        cyan_pixels = [
+            (130, 50), (310, 800), (760, 120),
+            (1010, 620)
+        ]
+
+        for px, py in cyan_pixels:
+            painter.fillRect(px, py, 8, 8, QColor("#00ffff"))
+
+
+# =====================================
+# START
+# =====================================
+app = QApplication(sys.argv)
+
+window = MainMenu()
+window.show()
+
+sys.exit(app.exec())
